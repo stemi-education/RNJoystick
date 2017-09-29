@@ -117,13 +117,13 @@ export default class RNJoystick extends Component{
         this.panResponder = PanResponder.create({
             onStartShouldSetPanResponder    : () => true,
             onPanResponderMove              : (evt, gestureState) => {
-        var dx = gestureState.dx;
-        var dy = gestureState.dy;
-        this.currentPacket = new Packet({power: this.getPower(dx, dy), angle: this.getAngle(dx, dy)});
-                console.log('x: ' + dx + ' y: ' + dy + ' power: ' + this.getPower(dx, dy) + ' angle: ' + this.getAngle(dx, dy));
-        Animated.event([null,{
-                  dx  : this.state.pan.x,
-                  dy  : this.state.pan.y
+                var dx = gestureState.dx;
+                var dy = gestureState.dy;
+                this.currentPacket = new Packet({power: this.getPower(dx, dy), angle: this.getAngle(dx, dy)});
+                console.log('x: ' + dx + ' y: ' + dy + ' power: ' + this.getPower(dx, dy) + ' angle: ' +  this.getAngle(dx, dy));
+                Animated.event([null, {
+                    dx  : this.state.pan.x,
+                    dy  : this.state.pan.y
                 }])(evt, gestureState);
             },
             onPanResponderRelease           : (evt, gestureState) => {
@@ -136,8 +136,8 @@ export default class RNJoystick extends Component{
         });
     }
 
-        componentDidMount() {
-            this.socket = new net.Socket();
+    componentDidMount() {
+        this.socket = new net.Socket();
         this.socket.setTimeout(3000);
         this.currentPacket = new Packet();
         var self = this;
