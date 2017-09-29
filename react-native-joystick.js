@@ -1,7 +1,7 @@
 import React, {Component} from 'react';
 import {
     AppState,
-	Alert,
+    Alert,
     Image,
     AppRegistry,
     StyleSheet,
@@ -97,7 +97,7 @@ export default class RNJoystick extends Component{
         };
 
         this.getPower = (x, y) => {
-            absDistFromCentre = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2)); 
+            absDistFromCentre = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
             relDistFromCentre = Math.trunc(absDistFromCentre / (Window.width / 2) * 100);
             return relDistFromCentre > 100 ? 100 : relDistFromCentre;
         }
@@ -111,7 +111,7 @@ export default class RNJoystick extends Component{
             if (x > 0) return Math.atan(y/x) * DEG_TO_RAD + 90;
             if (x < 0) return Math.atan(y/x) * DEG_TO_RAD - 90;
         }
-		
+
 		this.getAngle = (x, y) => Math.trunc(this._getAngle(x,y));
 
         this.panResponder = PanResponder.create({
@@ -154,7 +154,7 @@ export default class RNJoystick extends Component{
 		});
 
 		self.socket.connect('80', '192.168.4.1');
-		
+
 	    self.intervalSender = setInterval(function(){
             try {
                 self.socket.write(self.currentPacket.getBuffer());
