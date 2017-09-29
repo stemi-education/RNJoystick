@@ -15,43 +15,43 @@ import {
 var net = require('net')
 var _ = require('lodash')
 
-var Packet = function(parameters){
-   var defaults = {
-     power: 0,
-     angle: 0,
-     rotation: 0,
-     staticTilt: 0,
-     movingTilt: 0,
-     onOff: 1,
-     accX: 0,
-     accY: 0,
-     slidersArray: [50, 25, 0, 0, 0, 0, 0, 0, 0],
-     duration: 0
-   }
+var Packet = function(parameters) {
+     var defaults = {
+        power: 0,
+        angle: 0,
+        rotation: 0,
+        staticTilt: 0,
+        movingTilt: 0,
+        onOff: 1,
+        accX: 0,
+        accY: 0,
+        slidersArray: [50, 25, 0, 0, 0, 0, 0, 0, 0],
+        duration: 0
+     }
 
-   if(parameters && parameters.slidersArray && parameters.slidersArray.length !== 9){
-     parameters.slidersArray = defaults.slidersArray;
-     console.log('new Packet: slidersArray.length should be exactly 9; defaulting ');
-   }
+    if(parameters && parameters.slidersArray && parameters.slidersArray.length !== 9){
+        parameters.slidersArray = defaults.slidersArray;
+        console.log('new Packet: slidersArray.length should be exactly 9; defaulting ');
+    }
 
-   for(p in parameters){
-     this[p.toString()] = parameters[p.toString()];
-   }
+    for(p in parameters){
+        this[p.toString()] = parameters[p.toString()];
+    }
 
-   _.defaults(this, defaults);
- }
+    _.defaults(this, defaults);
+}
 
 Packet.prototype.getBuffer = function(){
-  var array = new Uint8Array(22);
+    var array = new Uint8Array(22);
 
-  array.set([80, 75, 84, // 'P', 'K', 'T'
-             this.power, this.angle/2, this.rotation, this.staticTilt,
-             this.movingTilt, this.onOff, this.accX, this.accY]);
-  array.set(this.slidersArray, 11);
-  //pack distance in 2 bytes (big endian)
-  array.set([~~(this.duration / 256), this.duration % 256], 20);
+    array.set([80, 75, 84, // 'P', 'K', 'T'
+               this.power, this.angle/2, this.rotation, this.staticTilt,
+               this.movingTilt, this.onOff, this.accX, this.accY]);
+    array.set(this.slidersArray, 11);
+    //pack distance in 2 bytes (big endian)
+    array.set([~~(this.duration / 256), this.duration % 256], 20);
 
-  return new Buffer(array);
+    return new Buffer(array);
 }
 
 let CIRCLE_RADIUS = 36;
@@ -112,23 +112,23 @@ export default class RNJoystick extends Component{
             if (x < 0) return Math.atan(y/x) * DEG_TO_RAD - 90;
         }
 
-		this.getAngle = (x, y) => Math.trunc(this._getAngle(x,y));
+        this.getAngle = (x, y) => Math.trunc(this._getAngle(x,y));
 
         this.panResponder = PanResponder.create({
             onStartShouldSetPanResponder    : () => true,
             onPanResponderMove              : (evt, gestureState) => {
-				var dx = gestureState.dx;
-				var dy = gestureState.dy;
-				this.currentPacket = new Packet({power: this.getPower(dx, dy), angle: this.getAngle(dx, dy)});
+        var dx = gestureState.dx;
+        var dy = gestureState.dy;
+        this.currentPacket = new Packet({power: this.getPower(dx, dy), angle: this.getAngle(dx, dy)});
                 console.log('x: ' + dx + ' y: ' + dy + ' power: ' + this.getPower(dx, dy) + ' angle: ' + this.getAngle(dx, dy));
-				Animated.event([null,{
-                	dx  : this.state.pan.x,
-                	dy  : this.state.pan.y
-            	}])(evt, gestureState);
-			},
+        Animated.event([null,{
+                  dx  : this.state.pan.x,
+                  dy  : this.state.pan.y
+                }])(evt, gestureState);
+            },
             onPanResponderRelease           : (evt, gestureState) => {
-				this.currentPacket = new Packet();
-                Animated.spring(
+                this.currentPacket = new Packet();
+                    Animated.spring(
                     this.state.pan,
                     {toValue:{x:0,y:0}}
                 ).start();
@@ -136,49 +136,48 @@ export default class RNJoystick extends Component{
         });
     }
 
-    componentDidMount() {
-		this.socket = new net.Socket();
-		this.socket.setTimeout(3000);
-		this.currentPacket = new Packet();
-		var self = this;
-		self.socket.on('data', function(data){ console.log('Received: ' + data); });
-		var connectError = function(){
-		  console.log('Can\'t connect to TCP socket. (' + self.ip + ':' + self.port +')');
-		}
-		self.socket.on('timeout', connectError);
-		self.socket.on('error', connectError);
-		self.socket.on('connect', function(){
-		  self.socket.setTimeout(0);
-		  self.connected = true;
-		  self.robotState = 'running';
-		});
+        componentDidMount() {
+            this.socket = new net.Socket();
+        this.socket.setTimeout(3000);
+        this.currentPacket = new Packet();
+        var self = this;
+        self.socket.on('data', function(data){ console.log('Received: ' + data); });
+        var connectError = function(){
+            console.log('Can\'t connect to TCP socket. (' + self.ip + ':' + self.port +')');
+        }
+        self.socket.on('timeout', connectError);
+        self.socket.on('error', connectError);
+        self.socket.on('connect', function(){
+            self.socket.setTimeout(0);
+            self.connected = true;
+            self.robotState = 'running';
+        });
 
-		self.socket.connect('80', '192.168.4.1');
+        self.socket.connect('80', '192.168.4.1');
 
-	    self.intervalSender = setInterval(function(){
+        self.intervalSender = setInterval(function(){
             try {
                 self.socket.write(self.currentPacket.getBuffer());
             } catch (e) {
                 console.log('TCP Socket Exception: write failed.');
-				Alert.alert(
- 					'Connection lost.',
-  					('Mobile phone lost connection with STEMI Hexapod. Please go to the WiFi settings' +
-                	' on your phone and connect to the WiFi network named STEMI-XXXXXXX, where X is a' +
-					' number between 0-9. Password for the network is "12345678".'),
-  					[
-    					{text: 'Got it', onPress: () => console.log('OK Pressed')},
-  					],
-  					{ cancelable: true }
-				)
-
+                Alert.alert(
+                'Connection lost.',
+                ('Mobile phone lost connection with STEMI Hexapod. Please go to the WiFi settings' +
+                ' on your phone and connect to the WiFi network named STEMI-XXXXXXX, where X is a' +
+                ' number between 0-9. Password for the network is "12345678".'),
+                [
+                    {text: 'Got it', onPress: () => console.log('OK Pressed')},
+                ],
+                  { cancelable: true }
+                );
             }
         }, 100);
     }
 
-	componentWillUnmount() {
-		clearInterval(this.intervalSender);
-		this.socket.end();
-	}
+    componentWillUnmount() {
+        clearInterval(this.intervalSender);
+        this.socket.end();
+    }
 
     render(){
         return (
