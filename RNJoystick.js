@@ -20,6 +20,16 @@ import Packet from './Packet';
 const CIRCLE_RADIUS = 36;
 const DEG_TO_RAD = 57.29578;
 
+// This funky looking function transforms movements gestures from screen coordinate
+// system to the STEMI Hexapod coordinate system.
+function calculateAngle(x, y) {
+  if (y === 0) return 0;
+  if (y < 0) return Math.atan(x / y) * DEG_TO_RAD * -1;
+  if (x === 0) return 180;
+  if (x > 0) return Math.atan(y / x) * DEG_TO_RAD + 90;
+  if (x < 0) return Math.atan(y / x) * DEG_TO_RAD - 90;
+}
+
 
 const Window = Dimensions.get('window');
 const styles = StyleSheet.create({
@@ -77,18 +87,8 @@ export default class RNJoystick extends Component {
     return relDistFromCentre > 100 ? 100 : relDistFromCentre;
   }
 
-  // This funky looking function transforms movements gestures from screen coordinate
-  // system to the STEMI Hexapod coordinate system.
-  _getAngle(x, y) {
-    if (y === 0) return 0;
-    if (y < 0) return Math.atan(x / y) * DEG_TO_RAD * -1;
-    if (x === 0) return 180;
-    if (x > 0) return Math.atan(y / x) * DEG_TO_RAD + 90;
-    if (x < 0) return Math.atan(y / x) * DEG_TO_RAD - 90;
-  }
-
   getAngle(x, y) {
-    return Math.trunc(this._getAngle(x, y));
+    return Math.trunc(calculateAngle(x, y));
   }
 
   handlePanResponderMove(evt, gestureState) {
