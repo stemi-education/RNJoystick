@@ -7,6 +7,6 @@
 import {
   AppRegistry
 } from 'react-native';
-import RNJoystick from './react-native-joystick';
+import RNJoystick from './RNJoystick';
 
 AppRegistry.registerComponent('RNJoystick', () => RNJoystick);
