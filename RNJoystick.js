@@ -11,11 +11,7 @@ import {
   Animated,
   Dimensions
 } from 'react-native';
-
-import net from 'net';
-import _ from 'lodash';
-
-import Packet from './Packet';
+import PacketSender from './PacketSender';
 
 const CIRCLE_RADIUS = 36;
 const DEG_TO_RAD = 57.29578;
@@ -63,15 +59,18 @@ export default class RNJoystick extends Component {
   constructor(props) {
     super(props);
 
-    this.communicateWithSocket = this.communicateWithSocket.bind(this);
     this.handlePanResponderMove = this.handlePanResponderMove.bind(this);
     this.handlePanResponderRelease = this.handlePanResponderRelease.bind(this);
+    this.handleAppStateChange = this.handleAppStateChange.bind(this);
+    this.onCommunicationError = this.onCommunicationError.bind(this);
+
+    this.packetSender = new PacketSender('80', '192.168.4.1', this.onCommunicationError);
 
     this.state = {
       showDraggable: true,
       dropZoneValues: null,
       pan: new Animated.ValueXY(),
-      currentPacket: new Packet(),
+      appState: AppState.currentState,
     };
 
     this.panResponder = PanResponder.create({
@@ -94,66 +93,50 @@ export default class RNJoystick extends Component {
   handlePanResponderMove(evt, gestureState) {
     const dx = gestureState.dx;
     const dy = gestureState.dy;
-    currentPacket = new Packet({ power: this.getPower(dx, dy), angle: this.getAngle(dx, dy) });
-    console.log('x: ' + dx + ' y: ' + dy + ' power: ' + this.getPower(dx, dy) + ' angle: ' + this.getAngle(dx, dy));
+    this.packetSender.updatePacket({ power: this.getPower(dx, dy), angle: this.getAngle(dx, dy) });
+    console.debug('x: ' + dx + ' y: ' + dy + ' power: ' + this.getPower(dx, dy) + ' angle: ' + this.getAngle(dx, dy));
     Animated.event([null, {
       dx: this.state.pan.x,
       dy: this.state.pan.y
     }])(evt, gestureState);
-    this.setState({ currentPacket });
   }
 
   handlePanResponderRelease(evt, gestureState) {
-    this.setState({ currentPacket: new Packet() });
+    this.packetSender.updatePacket({});
     Animated.spring(
       this.state.pan,
       { toValue: { x: 0, y: 0 } }
     ).start();
   }
 
-  communicateWithSocket() {
-    try {
-      this.socket.write(this.state.currentPacket.getBuffer());
-    } catch (e) {
-      console.log('TCP Socket Exception: write failed.');
-      Alert.alert(
-        'Connection lost.',
-        ('Mobile phone lost connection with STEMI Hexapod. Please go to the WiFi settings' +
-          ' on your phone and connect to the WiFi network named STEMI-XXXXXXX, where X is a' +
-          ' number between 0-9. Password for the network is "12345678".'),
-        [
-          { text: 'Got it', onPress: () => console.log('OK Pressed') },
-        ],
-        { cancelable: true }
-      );
-    }
+  onCommunicationError() {
+    Alert.alert(
+      'Connection lost.',
+      ('Mobile phone lost connection with STEMI Hexapod. Please go to the WiFi settings' +
+        ' on your phone and connect to the WiFi network named STEMI-XXXXXXX, where X is a' +
+        ' number between 0-9. Password for the network is "12345678".'),
+      [
+        { text: 'Got it', onPress: () => console.log('OK Pressed') },
+      ],
+      { cancelable: true }
+    );
   }
 
-
-  componentDidMount() {
-    this.socket = new net.Socket();
-    this.socket.setTimeout(3000);
-    this.socket.on('data', function (data) { console.log('Received: ' + data); });
-    var connectError = function () {
-      console.log('Can\'t connect to TCP socket. (' + this.ip + ':' + this.port + ')');
+  handleAppStateChange(nextAppState) {
+    if (this.state.appState.match(/inactive|background/) && nextAppState === 'active') {
+      this.packetSender.connect();
+    } else if (nextAppState.match(/inactive|background/) && this.state.appState === 'active') {
+      this.packetSender.disconnect();
     }
-    this.socket.on('timeout', connectError);
-    this.socket.on('error', connectError);
-    this.socket.on('connect', function () {
-      this.socket.setTimeout(0);
-      this.connected = true;
-      this.robotState = 'running';
-    });
-
-    this.socket.connect('80', '192.168.4.1');
+    this.setState({ appState: nextAppState });
   }
 
-  componentWillUpdate(nextProps, nextState) {
-    this.communicateWithSocket();
+  componentWillMount() {
+    AppState.addEventListener('change', this.handleAppStateChange);
   }
 
   componentWillUnmount() {
-    this.socket.end();
+    AppState.removeEventListener('change', this.handleAppStateChange);
   }
 
   render() {
